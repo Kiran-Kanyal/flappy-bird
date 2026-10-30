@@ -150,7 +150,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
         for(int i = 0; i < 7; i++) {
             clouds.add(new Cloud(rng.nextDouble() * W * 1.6, 60 + rng.nextDouble() * 260,
-                                 0.55 + rng.nextDouble() * 0.9, 0.18 + rng.nextDouble() * 0.22));
+                    0.55 + rng.nextDouble() * 0.9, 0.18 + rng.nextDouble() * 0.22));
         }
         for(int i = 0; i < stars.length; i++) {
             stars[i] = new double[] {rng.nextDouble() * W, rng.nextDouble() * (GROUND_Y - 160), 1 + rng.nextDouble() * 1.8};
@@ -161,6 +161,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         bird.reset(H / 2.0 - Bird.DRAW_HEIGHT);
 
         if(startClock) {
+            //music only runs in the real game; the headless smoke test stays silent
+            Music.init();
+            Music.play();
             //a short timer plus an accumulator decouples render cadence from simulation rate
             new Timer(8, this).start();
         }
@@ -338,7 +341,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 Sfx.score();
                 pops.add(new ScorePop("+1", bird.getCenterX() + 26, bird.getCenterY() - 14));
                 addParticles(p.getRightEdge(), (p.getGapTop() + p.getGapBottom()) / 2.0, 7,
-                             new Color(255, 236, 140), 2.2);
+                        new Color(255, 236, 140), 2.2);
                 if(score > 0 && score % 10 == 0) {
                     flash = Math.max(flash, 0.18);
                     showToast(score + " in a row!");
@@ -357,6 +360,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         if(box.y + box.height >= GROUND_Y) {
             Sfx.hit();
             Sfx.fall();
+            Music.duck();
             shake = 9;
             flash = 0.5;
             addParticles(bird.getCenterX(), GROUND_Y - 8, 12, new Color(224, 200, 130), 3.0);
@@ -373,6 +377,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 bird.tumble();
                 state = State.DYING;
                 Sfx.fall();
+                Music.duck();
                 return;
             }
         }
@@ -407,6 +412,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         bird.reset(H / 2.0 - Bird.DRAW_HEIGHT);
         state = State.READY;
         Sfx.swoosh();
+        Music.restore();
     }
 
     /**
@@ -459,9 +465,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         if(k == KeyEvent.VK_P || k == KeyEvent.VK_ESCAPE) {
             if(state == State.PLAYING) {
                 state = State.PAUSED;
+                Music.pause();
             }
             else if(state == State.PAUSED) {
                 state = State.PLAYING;
+                Music.resume();
                 lastNanos = System.nanoTime();
                 accumulator = 0;
             }
@@ -469,6 +477,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 state = State.MENU;
                 pipes.clear();
                 Sfx.swoosh();
+                Music.restore();
             }
             return;
         }
@@ -479,7 +488,15 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
 
         if(k == KeyEvent.VK_M) {
-            showToast(Sfx.toggleMute() ? "Sound off" : "Sound on");
+            //M is the master mute, so silencing the game also silences the music
+            boolean off = Sfx.toggleMute();
+            Music.setMuted(off);
+            showToast(off ? "Sound off" : "Sound on");
+            return;
+        }
+
+        if(k == KeyEvent.VK_N) {
+            showToast(Music.toggleMute() ? "Music off" : "Music on");
             return;
         }
 
@@ -498,6 +515,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
 
         if(k == KeyEvent.VK_Q) {
+            Music.stop();
             System.exit(0);
         }
     }
@@ -528,11 +546,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private void addParticles(double x, double y, int count, Color color, double spread) {
         for(int i = 0; i < count; i++) {
             particles.add(new Particle(x, y,
-                                       (rng.nextDouble() - 0.5) * spread * 2 - 0.8,
-                                       (rng.nextDouble() - 0.5) * spread * 2,
-                                       18 + rng.nextInt(22),
-                                       2 + rng.nextDouble() * 3.5,
-                                       color));
+                    (rng.nextDouble() - 0.5) * spread * 2 - 0.8,
+                    (rng.nextDouble() - 0.5) * spread * 2,
+                    18 + rng.nextInt(22),
+                    2 + rng.nextDouble() * 3.5,
+                    color));
         }
     }
 
@@ -785,6 +803,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         if(Sfx.isMuted()) {
             g.drawString("muted", W - 14 - fm.stringWidth("muted"), 42);
         }
+        else if(Music.isMuted()) {
+            g.drawString("music off", W - 14 - fm.stringWidth("music off"), 42);
+        }
 
         if(toastTicks > 0 && state != State.OVER) {
             int alpha = (int) (255 * Math.min(1.0, toastTicks / 30.0));
@@ -834,12 +855,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
         panel(g, 60, 404, W - 120, 176);
         outlinedCenter(g, "SPACE or CLICK to play", W / 2.0, 438, F_SMALL, Color.WHITE);
-        outlinedCenter(g, "◀  " + difficulty.label() + "  ▶", W / 2.0, 474, F_MED, new Color(150, 240, 190));
+        outlinedCenter(g, "◀️  " + difficulty.label() + "  ▶️", W / 2.0, 474, F_MED, new Color(150, 240, 190));
         outlinedCenter(g, "Best on " + difficulty.label() + ": " + best, W / 2.0, 504, F_SMALL, new Color(255, 255, 255, 215));
 
         g.setFont(F_TINY);
         g.setColor(new Color(255, 255, 255, 190));
-        centerTiny(g, "P pause     R restart     M sound     Q quit", W / 2.0, 544);
+        centerTiny(g, "P pause   R restart   M sound   N music   Q quit", W / 2.0, 544);
         centerTiny(g, "← → change difficulty", W / 2.0, 564);
     }
 
@@ -888,9 +909,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         //medal tiers give the score something to aim at beyond the number itself
         String medal = score >= 50 ? "PLATINUM" : score >= 35 ? "GOLD" : score >= 20 ? "SILVER" : score >= 10 ? "BRONZE" : "";
         Color medalColor = score >= 50 ? new Color(190, 235, 245)
-                         : score >= 35 ? new Color(255, 212, 90)
-                         : score >= 20 ? new Color(216, 220, 228)
-                         : new Color(206, 140, 86);
+                : score >= 35 ? new Color(255, 212, 90)
+                : score >= 20 ? new Color(216, 220, 228)
+                : new Color(206, 140, 86);
 
         if(!medal.isEmpty()) {
             int mx = 96, my = 262;
@@ -927,10 +948,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         boolean ready = overTicks >= RESTART_LOCKOUT_TICKS;
         int alpha = ready ? (int) (200 + 55 * Math.sin(tick * 0.12)) : 90;
         outlinedCenter(g, "SPACE or CLICK to play again", W / 2.0, 506,
-                       F_SMALL, new Color(255, 255, 255, Math.max(0, Math.min(255, alpha))));
+                F_SMALL, new Color(255, 255, 255, Math.max(0, Math.min(255, alpha))));
         g.setFont(F_TINY);
         g.setColor(new Color(255, 255, 255, 190));
-        centerTiny(g, "◀ ▶ difficulty: " + difficulty.label(), W / 2.0, 536);
+        centerTiny(g, "◀️ ▶️ difficulty: " + difficulty.label(), W / 2.0, 536);
         centerTiny(g, "R restart     ESC menu     Q quit", W / 2.0, 558);
     }
 
@@ -1190,10 +1211,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
          */
         static Palette lerp(Palette a, Palette b, double t) {
             return new Palette(mix(a.skyTop, b.skyTop, t), mix(a.skyBottom, b.skyBottom, t),
-                               mix(a.cloud, b.cloud, t), mix(a.hillFar, b.hillFar, t),
-                               mix(a.hillNear, b.hillNear, t), mix(a.pipe, b.pipe, t),
-                               mix(a.ground, b.ground, t), mix(a.groundDark, b.groundDark, t),
-                               mix(a.grass, b.grass, t), a.night + (b.night - a.night) * t);
+                    mix(a.cloud, b.cloud, t), mix(a.hillFar, b.hillFar, t),
+                    mix(a.hillNear, b.hillNear, t), mix(a.pipe, b.pipe, t),
+                    mix(a.ground, b.ground, t), mix(a.groundDark, b.groundDark, t),
+                    mix(a.grass, b.grass, t), a.night + (b.night - a.night) * t);
         }
 
         /**
@@ -1205,8 +1226,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
          */
         private static Color mix(Color a, Color b, double t) {
             return new Color((int) (a.getRed() + (b.getRed() - a.getRed()) * t),
-                             (int) (a.getGreen() + (b.getGreen() - a.getGreen()) * t),
-                             (int) (a.getBlue() + (b.getBlue() - a.getBlue()) * t));
+                    (int) (a.getGreen() + (b.getGreen() - a.getGreen()) * t),
+                    (int) (a.getBlue() + (b.getBlue() - a.getBlue()) * t));
         }
     }
 }

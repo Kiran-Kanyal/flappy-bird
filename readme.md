@@ -40,15 +40,16 @@ in `~/.flappy_bird_redux`.
 
 ## How it works
 
-| File | Role |
-| --- | --- |
-| `src.TopClass.java` | Entry point; builds the window |
-| `src.GamePanel.java` | Simulation, rendering, input, persistence |
-| `src.Bird.java` | Player physics and sprite drawing |
-| `src.PipePair.java` | One obstacle, drawn procedurally |
-| `src.Sprites.java` | Image loading, scaling and caching |
-| `src.Sfx.java` | Synthesised sound bank |
-| `src.SmokeTest.java` | Headless checks for the simulation and renderer |
+| File                 | Role                                            |
+|----------------------|-------------------------------------------------|
+| `src.TopClass.java`  | Entry point; builds the window                  |
+| `src.GamePanel.java` | Simulation, rendering, input, persistence       |
+| `src.Bird.java`      | Player physics and sprite drawing               |
+| `src.PipePair.java`  | One obstacle, drawn procedurally                |
+| `src.Sprites.java`   | Image loading, scaling and caching              |
+| `src.Sfx.java`       | Synthesised sound bank                          |
+| `src.Music.java`     | Looping background music                        |
+| `test.SmokeTest.java` | Headless checks for the simulation and renderer |
 
 Two decisions shape how it plays:
 

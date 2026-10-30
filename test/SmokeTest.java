@@ -1,4 +1,6 @@
-package src;
+package test;
+
+import src.GamePanel;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -10,7 +12,7 @@ import java.awt.image.BufferedImage;
  * starts, a flap lifts the bird, an unattended bird dies, a bot that flaps on a
  * simple rule scores, and the game returns to a playable state afterwards.
  *
- * Run with: java -Djava.awt.headless=true src.SmokeTest
+ * Run with: java -Djava.awt.headless=true test.SmokeTest
  */
 public final class SmokeTest {
     private static int failures = 0;
