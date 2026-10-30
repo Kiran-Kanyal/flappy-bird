@@ -1,0 +1,6 @@
+# Java compiled classes
+*.class
+
+
+# Build output
+out/
